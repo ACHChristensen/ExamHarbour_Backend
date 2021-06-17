@@ -1,17 +1,21 @@
 package rest;
 
-import entities.User;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import entities.Owner;
 import entities.Role;
-
+import entities.User;
 import io.restassured.RestAssured;
 import static io.restassured.RestAssured.given;
 import io.restassured.http.ContentType;
 import io.restassured.parsing.Parser;
+import io.restassured.response.Response;
 import java.net.URI;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.ws.rs.core.UriBuilder;
 import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.grizzly.http.util.HttpStatus;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 import static org.hamcrest.Matchers.equalTo;
@@ -24,8 +28,11 @@ import org.junit.jupiter.api.Test;
 import org.mindrot.jbcrypt.BCrypt;
 import utils.EMF_Creator;
 
-//@Disabled
-public class LoginEndpointTest {
+/**
+ *
+ * @author Anne Cathrine Høyer Christensen
+ */
+public class OwnerResourceTest {
 
     private static final int SERVER_PORT = 7777;
     private static final String SERVER_URL = "http://localhost/api";
@@ -33,6 +40,8 @@ public class LoginEndpointTest {
     static final URI BASE_URI = UriBuilder.fromUri(SERVER_URL).port(SERVER_PORT).build();
     private static HttpServer httpServer;
     private static EntityManagerFactory emf;
+
+    private static Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     static HttpServer startServer() {
         ResourceConfig rc = ResourceConfig.forApplication(new ApplicationConfig());
@@ -52,17 +61,21 @@ public class LoginEndpointTest {
     }
 
     @AfterAll
-    public static void closeTestServer() {
+    public static void tearDownClass() {
         EMF_Creator.endREST_TestWithDB();
-
         httpServer.shutdownNow();
+    }
+    
+    @AfterEach
+    public void tearDown(){
+     
     }
 
     @BeforeEach
     public void setUp() {
-        EntityManager emTD = emf.createEntityManager();
         EntityManager em = emf.createEntityManager();
-         
+
+           EntityManager emTD = emf.createEntityManager();
         try{
             emTD.getTransaction().begin();
         //Delete existing users, roles, ect. to get a "fresh" database
@@ -73,13 +86,23 @@ public class LoginEndpointTest {
           }  finally{
             emTD.close();
         }
-
+        
+        
         User user = new User("ChunkyMonkey", "Gulerødder4TW!");
         User admin = new User("Cthulhu", "Horror");
         User both = new User("Cathrine", "frkAwesome123");
-        
+
         Role userRole = new Role("user");
         Role adminRole = new Role("admin");
+
+        Owner owner1 = new Owner("Captain Jack Sparrow", "The Carribian", "5318008");
+        Owner owner2 = new Owner("Kaptajn Haddock", "Scotland Somewhere", "10000001");
+        Owner owner3 = new Owner("Tin tin", "Tibet Somewhere", "10101010");
+        Owner owner4 = new Owner("Skipper Skraek", "Popeye Village i Malta", "50503050");
+//        Owner owner5 = new Owner("Captain Morgan", "Mavebæltestedet 1", "10999999");
+//        Owner owner6 = new Owner("Harald Blåtand", "Vinkingevej 1010, 0001 Danmark", "89586858");
+//        Owner owner7 = new Owner("Ragnar", "Vinkingevej 1012, 0001 Danmark", "99999999");
+//        Owner owner8 = new Owner("Kaptajn Klo", "Fantasivej 12, 202020 Ønske Øen", "99910010");
 
         try {
             em.getTransaction().begin();
@@ -92,25 +115,27 @@ public class LoginEndpointTest {
             em.merge(user);
             em.merge(admin);
             em.merge(both);
-            em.getTransaction().commit();    
+            em.persist(owner1);
+            em.persist(owner2);
+            em.persist(owner3);
+            em.persist(owner4);
+//            em.persist(owner5);
+//            em.persist(owner6);
+//            em.persist(owner7);
+//            em.persist(owner8);
+            em.getTransaction().commit();
+            System.out.println("Succes");
         } finally {
             em.close();
         }
     }
-    
-    @AfterEach
-    public void tearDown(){
-       
-        
-    }
 
-    //This is how we hold on to the token after login, similar to that a client must store the token somewhere
     private static String securityToken;
 
     //Utility method to login and set the returned securityToken
     private static void login(String username, String password) {
         //Boolean passwordCrypted = BCrypt.checkpw(password,BCrypt.gensalt());
-       // if(passwordCrypted==true){
+        // if(passwordCrypted==true){
         String json = String.format("{username: \"%s\", password: \"%s\"}", username, password);
         securityToken = given()
                 .contentType("application/json")
@@ -120,7 +145,7 @@ public class LoginEndpointTest {
                 .then()
                 .extract().path("token");
         //System.out.println("TOKEN ---> " + securityToken);
-    //}else throw new Exception("Not identical passwords");
+        //}else throw new Exception("Not identical passwords");
     }
 
     private void logOut() {
@@ -128,105 +153,20 @@ public class LoginEndpointTest {
     }
 
     @Test
-    public void serverIsRunning() {
-        given().when().get("/info").then().statusCode(200);
+    public void testServerIsUp() {
+        given().when().get("/owners/count").then().statusCode(200);
     }
 
 
     @Test
-    public void testRestForAdmin() {
-        login("Cthulhu", "Horror");
-        given()
-                .contentType("application/json")
-                .accept(ContentType.JSON)
-                .header("x-access-token", securityToken)
-                .when()
-                .get("info/admin").then()
-                .statusCode(200)
-                .body("msg", equalTo("Hello to (admin) User: Cthulhu"));
-    }
-
-    @Test
-    public void testRestForUser() {
+    public void testCount() throws Exception {
         login("ChunkyMonkey", "Gulerødder4TW!");
         given()
                 .contentType("application/json")
-                .header("x-access-token", securityToken)
-                .when()
-                .get("info/user").then()
-                .statusCode(200)
-                .body("msg", equalTo("Hello to User: ChunkyMonkey"));
-    }
-
-    @Test
-    public void testAutorizedUserCannotAccesAdminPage() {
-        login("ChunkyMonkey", "Gulerødder4TW!");
-        given()
-                .contentType("application/json")
-                .header("x-access-token", securityToken)
-                .when()
-                .get("info/admin").then() //Call Admin endpoint as user
-                .statusCode(401);
-    }
-
-    @Test
-    public void testAutorizedAdminCannotAccesUserPage() {
-        login("Cthulhu", "Horror");
-        given()
-                .contentType("application/json")
-                .header("x-access-token", securityToken)
-                .when()
-                .get("info/user").then() //Call User endpoint as Admin
-                .statusCode(401);
-    }
-
-    @Test
-    public void testRestForMultiRole1() {
-        login("Cathrine", "frkAwesome123");
-        given()
-                .contentType("application/json")
-                .accept(ContentType.JSON)
-                .header("x-access-token", securityToken)
-                .when()
-                .get("info/admin").then()
-                .statusCode(200)
-                .body("msg", equalTo("Hello to (admin) User: Cathrine"));
-    }
-
-    @Test
-    public void testRestForMultiRole2() {
-        login("Cathrine", "frkAwesome123");
-        given()
-                .contentType("application/json")
-                .header("x-access-token", securityToken)
-                .when()
-                .get("info/user").then()
-                .statusCode(200)
-                .body("msg", equalTo("Hello to User: Cathrine"));
-    }
-
-    @Test
-    public void userNotAuthenticated() {
-        logOut();
-        given()
-                .contentType("application/json")
-                .when()
-                .get("info/user").then()
-                .statusCode(403)
-                .body("code", equalTo(403))
-                .body("message", equalTo("Not authenticated - do login"));
-    }
-
-    @Test
-    public void adminNotAuthenticated() {
-        logOut();
-        given()
-                .contentType("application/json")
-                .when()
-                .get("info/user").then()
-                .statusCode(403)
-                .body("code", equalTo(403))
-                .body("message", equalTo("Not authenticated - do login"));
+                .get("owners/count").then()
+                .assertThat()
+                .statusCode(HttpStatus.OK_200.getStatusCode())
+                .body("count", equalTo(4));
     }
 
 }
