@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mindrot.jbcrypt.BCrypt;
 import utils.EMF_Creator;
+import javax.persistence.TypedQuery;
 
 /**
  *
@@ -65,29 +66,28 @@ public class OwnerResourceTest {
         EMF_Creator.endREST_TestWithDB();
         httpServer.shutdownNow();
     }
-    
+
     @AfterEach
-    public void tearDown(){
-     
+    public void tearDown() {
+
     }
 
     @BeforeEach
     public void setUp() {
         EntityManager em = emf.createEntityManager();
 
-           EntityManager emTD = emf.createEntityManager();
-        try{
+        EntityManager emTD = emf.createEntityManager();
+        try {
             emTD.getTransaction().begin();
-        //Delete existing users, roles, ect. to get a "fresh" database
-        emTD.createQuery("delete from User").executeUpdate();
-        emTD.createQuery("delete from Role").executeUpdate();
-        emTD.createQuery("delete from Owner").executeUpdate();
-        emTD.getTransaction().commit();
-          }  finally{
+            //Delete existing users, roles, ect. to get a "fresh" database
+            emTD.createQuery("DELETE FROM User").executeUpdate();
+            emTD.createQuery("DELETE FROM Role").executeUpdate();
+            emTD.createQuery("DELETE FROM Owner").executeUpdate();
+            emTD.getTransaction().commit();
+        } finally {
             emTD.close();
         }
-        
-        
+
         User user = new User("ChunkyMonkey", "Gulerødder4TW!");
         User admin = new User("Cthulhu", "Horror");
         User both = new User("Cathrine", "frkAwesome123");
@@ -156,7 +156,6 @@ public class OwnerResourceTest {
     public void testServerIsUp() {
         given().when().get("/owners/count").then().statusCode(200);
     }
-
 
     @Test
     public void testCount() throws Exception {

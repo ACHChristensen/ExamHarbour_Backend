@@ -1,5 +1,7 @@
 package utils;
 
+import entities.Boat;
+import entities.Harbour;
 import entities.Owner;
 import entities.Role;
 import entities.User;
@@ -41,10 +43,46 @@ public class SetupTestUsers {
         }
         
     }
+    public static void populateHarboursAndBoats() throws UnsupportedOperationException{
+
+        EntityManagerFactory emf = EMF_Creator.createEntityManagerFactory();
+        EntityManager em = emf.createEntityManager();
+
+        Harbour harbour1 = new Harbour("Rungsted Havn", "Rungsted", 200);
+        Harbour harbour2 = new Harbour("Den Hemmelige Havn", "Narnia", 10);
+        Harbour harbour3 = new Harbour("Yokohama", "Tokyobugten", 30000);
+        
+        Boat boat1 = new Boat("The Black Perl", "Gammeldags piratskib", 200, ":D", harbour2);
+        Boat boat2 = new Boat("Yvonne", "Ubåd", 7, "xD", harbour3);
+        Boat boat3 = new Boat("Freja", "Vinkingeskib", 100, ":P", harbour1);
+        Boat boat4 = new Boat("Den rygende kvinde", "Dampskib", 1, "^^", harbour1);
+        Boat boat5 = new Boat("Den vågende kvinde", "Dampskib", 21, ":)", harbour3);
+        Boat boat6 = new Boat("Gerda", "Dampskib", 3, "xP", harbour3);
+        Boat boat7 = new Boat("[Ukendt]", "ubåd", 65, "-_-", harbour3);
+        
+        try {
+            em.getTransaction().begin();
+            em.persist(harbour1);
+            em.persist(harbour2);
+            em.persist(harbour3);
+            em.persist(boat1);
+            em.persist(boat2);
+            em.persist(boat3);
+            em.persist(boat4);
+            em.persist(boat5);
+            em.persist(boat6);
+            em.persist(boat7);
+            em.getTransaction().commit();    
+        } finally {
+            em.close();
+        }
+        
+    }
 
     public static void main(String[] args) throws Exception {
         populate();
         populateOwners();
+        populateHarboursAndBoats();
     }
 
     public static void populateOwners() throws Exception {
